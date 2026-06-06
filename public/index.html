@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LeadFlow CRM | Advanced Lead Generation & CRM Dashboard</title>
+  
+  <!-- Global Error Logger & Toast Visualizer -->
+  <script>
+    window.addEventListener('error', function(event) {
+      console.error('[Global Error]', event.error || event.message);
+      setTimeout(() => {
+        const container = document.getElementById('toast-container');
+        if (container) {
+          const toast = document.createElement('div');
+          toast.className = 'toast error';
+          toast.innerHTML = `
+            <i class="fa-solid fa-triangle-exclamation" style="color: var(--rose);"></i>
+            <span>Error: ${event.message.substring(0, 50)}...</span>
+          `;
+          container.appendChild(toast);
+          
+          setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(50px)';
+            toast.style.transition = 'all 0.5s ease';
+            setTimeout(() => toast.remove(), 500);
+          }, 4500);
+        }
+      }, 500);
+    });
+    window.addEventListener('unhandledrejection', function(event) {
+      console.error('[Unhandled Rejection]', event.reason);
+      setTimeout(() => {
+        const container = document.getElementById('toast-container');
+        if (container) {
+          const toast = document.createElement('div');
+          toast.className = 'toast error';
+          toast.innerHTML = `
+            <i class="fa-solid fa-triangle-exclamation" style="color: var(--rose);"></i>
+            <span>Rejection: ${String(event.reason).substring(0, 50)}...</span>
+          `;
+          container.appendChild(toast);
+          
+          setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(50px)';
+            toast.style.transition = 'all 0.5s ease';
+            setTimeout(() => toast.remove(), 500);
+          }, 4500);
+        }
+      }, 500);
+    });
+  </script>
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- ChartJS for Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Custom Styling -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Toast Notification Wrapper -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- App Wrapper -->
+  <div class="app-layout">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">
+          <i class="fa-solid fa-wand-magic-sparkles logo-icon"></i>
+        </div>
+        <div class="brand-text">
+          <h1>LeadFlow</h1>
+          <span>B2B LEAD ENGINES</span>
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <ul>
+          <li>
+            <button class="nav-btn active" data-tab="dashboard">
+              <i class="fa-solid fa-chart-pie"></i>
+              <span>Dashboard</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-btn" data-tab="finder">
+              <i class="fa-solid fa-magnifying-glass-location"></i>
+              <span>Lead Finder</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-btn" data-tab="crm">
+              <i class="fa-solid fa-rectangle-list"></i>
+              <span>CRM Board</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-btn" data-tab="outreach">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span>Outreach Hub</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-btn" data-tab="settings">
+              <i class="fa-solid fa-sliders"></i>
+              <span>Settings</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="profile-card">
+          <div class="profile-avatar">
+            <i class="fa-solid fa-user-tie"></i>
+          </div>
+          <div class="profile-info">
+            <h4>Growth Agency</h4>
+            <span>Demo Workspace</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+    
+    <!-- Main Content Area -->
+    <main class="main-panel">
+      
+      <!-- Top Utility Header -->
+      <header class="top-header">
+        <div class="header-search">
+          <i class="fa-solid fa-server header-status-icon"></i>
+          <span class="system-status-pill" id="system-mode-badge">Mock Sandbox</span>
+        </div>
+        <div class="header-actions">
+          <div class="stat-pill">
+            <i class="fa-solid fa-database text-purple"></i>
+            <span>CRM Database: <strong id="header-total-leads">0</strong></span>
+          </div>
+          <div class="stat-pill">
+            <i class="fa-solid fa-dollar-sign text-emerald"></i>
+            <span>Pipeline: <strong id="header-pipeline-value">$0</strong></span>
+          </div>
+        </div>
+      </header>
+      
+      <!-- Views Container -->
+      <div class="view-container">
+        
+        <!-- ================= DASHBOARD TAB ================= -->
+        <section id="tab-dashboard" class="app-tab-view active">
+          <div class="view-header">
+            <h2>Performance Dashboard</h2>
+            <p>High level overview of your generated leads and CRM conversion rates.</p>
+          </div>
+          
+          <!-- Key Metrics Grid -->
+          <div class="metrics-grid">
+            <div class="metric-card glass">
+              <div class="metric-content">
+                <span class="metric-title">Total Leads</span>
+                <h3 id="stat-total-leads">0</h3>
+                <span class="metric-trend positive"><i class="fa-solid fa-arrow-up"></i> +12% this week</span>
+              </div>
+              <div class="metric-icon bg-purple">
+                <i class="fa-solid fa-users"></i>
+              </div>
+            </div>
+            
+            <div class="metric-card glass">
+              <div class="metric-content">
+                <span class="metric-title">Contacted Leads</span>
+                <h3 id="stat-contacted-leads">0</h3>
+                <span class="metric-trend neutral"><i class="fa-solid fa-minus"></i> Active campaign</span>
+              </div>
+              <div class="metric-icon bg-cyan">
+                <i class="fa-solid fa-envelope-open-text"></i>
+              </div>
+            </div>
+            
+            <div class="metric-card glass">
+              <div class="metric-content">
+                <span class="metric-title">Pipeline Value</span>
+                <h3 id="stat-pipeline-value">$0</h3>
+                <span class="metric-trend positive"><i class="fa-solid fa-arrow-up"></i> Potential revenue</span>
+              </div>
+              <div class="metric-icon bg-emerald">
+                <i class="fa-solid fa-hand-holding-dollar"></i>
+              </div>
+            </div>
+            
+            <div class="metric-card glass">
+              <div class="metric-content">
+                <span class="metric-title">Conversion Rate</span>
+                <h3 id="stat-conversion-rate">0%</h3>
+                <span class="metric-trend positive"><i class="fa-solid fa-percent"></i> Closed Won</span>
+              </div>
+              <div class="metric-icon bg-amber">
+                <i class="fa-solid fa-trophy"></i>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Analytics Charts Grid -->
+          <div class="charts-grid">
+            <div class="chart-card glass">
+              <h3>CRM Lead Funnel Distribution</h3>
+              <div class="chart-wrapper">
+                <canvas id="funnelChart"></canvas>
+              </div>
+            </div>
+            <div class="chart-card glass">
+              <h3>Leads Breakdown by Business Niche</h3>
+              <div class="chart-wrapper">
+                <canvas id="nicheChart"></canvas>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Recent Leads Activity -->
+          <div class="dashboard-footer-grid">
+            <div class="activity-card glass">
+              <div class="card-header-flex">
+                <h3>Recent Activity Log</h3>
+                <button class="btn btn-sm btn-outline" id="clear-activity-btn">Clear Log</button>
+              </div>
+              <ul class="activity-list" id="activity-feed-list">
+                <!-- Script will populate logs here -->
+                <li class="empty-state-list">No recent updates logged yet. Move leads in the CRM or run scans to populate.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+        
+        <!-- ================= LEAD FINDER TAB ================= -->
+        <section id="tab-finder" class="app-tab-view">
+          <div class="view-header">
+            <h2>Global Lead Finder</h2>
+            <p>Search for potential business customers by defining your niche and geographical target.</p>
+          </div>
+          
+          <!-- Search Control Board -->
+          <div class="search-panel glass">
+            <form id="lead-search-form" class="search-form">
+              <div class="form-group-flex">
+                <div class="input-container">
+                  <label for="search-niche"><i class="fa-solid fa-briefcase"></i> Niche / Business Type</label>
+                  <div class="input-select-wrapper">
+                    <input type="text" id="search-niche" placeholder="e.g. Dentist, Gym, Cafe, Restaurant..." list="niche-options" required>
+                    <datalist id="niche-options">
+                      <option value="Dentist">
+                      <option value="Gym">
+                      <option value="Lawyer">
+                      <option value="Agency">
+                      <option value="Cafe">
+                      <option value="Restaurant">
+                      <option value="Plumber">
+                    </datalist>
+                  </div>
+                </div>
+                
+                <div class="input-container">
+                  <label for="search-location"><i class="fa-solid fa-location-dot"></i> Target Location</label>
+                  <input type="text" id="search-location" placeholder="e.g. Austin, TX or New York, NY" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-search" id="btn-search-trigger">
+                  <i class="fa-solid fa-paper-plane-launch"></i> <span>Search Leads</span>
+                </button>
+              </div>
+            </form>
+          </div>
+          
+          <!-- Finder View Split-Pane -->
+          <div class="finder-split-layout">
+            
+            <!-- Left Pane: Results List -->
+            <div class="finder-results-pane glass">
+              <div class="pane-header">
+                <h3>Discovered Leads (<span id="results-count">0</span>)</h3>
+                <div class="search-meta-info" id="search-speed-container" style="display: none;">
+                  <span>Query completed in <strong id="search-speed-time">0.0</strong>s</span>
+                </div>
+              </div>
+              
+              <div class="results-container" id="search-results-list">
+                <div class="empty-state">
+                  <i class="fa-solid fa-search-location empty-icon"></i>
+                  <h4>Ready to Discover Leads</h4>
+                  <p>Input a business type and location above to scan directories and map pins.</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Right Pane: Interactive Map -->
+            <div class="finder-map-pane glass">
+              <div id="lead-map-container" class="leaflet-map-element"></div>
+            </div>
+          </div>
+        </section>
+        
+        <!-- ================= CRM BOARD TAB ================= -->
+        <section id="tab-crm" class="app-tab-view">
+          <div class="view-header">
+            <h2>CRM Pipeline Board</h2>
+            <p>Track your customer conversion funnel. Click the buttons on cards to transition their stages.</p>
+          </div>
+          
+          <!-- Kanban Grid -->
+          <div class="kanban-board-grid">
+            
+            <!-- Column: Discovered (New) -->
+            <div class="kanban-column" data-status="new">
+              <div class="kanban-column-header bg-subtle-purple">
+                <span class="column-dot dot-purple"></span>
+                <h3>New Leads</h3>
+                <span class="column-count" id="count-new">0</span>
+              </div>
+              <div class="kanban-card-container" id="container-new"></div>
+            </div>
+            
+            <!-- Column: Contacted -->
+            <div class="kanban-column" data-status="contacted">
+              <div class="kanban-column-header bg-subtle-cyan">
+                <span class="column-dot dot-cyan"></span>
+                <h3>Outreached</h3>
+                <span class="column-count" id="count-contacted">0</span>
+              </div>
+              <div class="kanban-card-container" id="container-contacted"></div>
+            </div>
+            
+            <!-- Column: In Discussion -->
+            <div class="kanban-column" data-status="discussion">
+              <div class="kanban-column-header bg-subtle-amber">
+                <span class="column-dot dot-amber"></span>
+                <h3>In Discussion</h3>
+                <span class="column-count" id="count-discussion">0</span>
+              </div>
+              <div class="kanban-card-container" id="container-discussion"></div>
+            </div>
+            
+            <!-- Column: Converted (Won) -->
+            <div class="kanban-column" data-status="converted">
+              <div class="kanban-column-header bg-subtle-emerald">
+                <span class="column-dot dot-emerald"></span>
+                <h3>Closed Won</h3>
+                <span class="column-count" id="count-converted">0</span>
+              </div>
+              <div class="kanban-card-container" id="container-converted"></div>
+            </div>
+            
+            <!-- Column: Lost -->
+            <div class="kanban-column" data-status="lost">
+              <div class="kanban-column-header bg-subtle-rose">
+                <span class="column-dot dot-rose"></span>
+                <h3>Closed Lost</h3>
+                <span class="column-count" id="count-lost">0</span>
+              </div>
+              <div class="kanban-card-container" id="container-lost"></div>
+            </div>
+            
+          </div>
+        </section>
+        
+        <!-- ================= OUTREACH CENTER TAB ================= -->
+        <section id="tab-outreach" class="app-tab-view">
+          <div class="view-header">
+            <h2>Outreach Campaign Hub</h2>
+            <p>Compose outreach emails and generate dynamic, personalized copy using lead variables.</p>
+          </div>
+          
+          <div class="outreach-grid">
+            
+            <!-- Left Column: Template Editor -->
+            <div class="outreach-card glass">
+              <h3>Email Template Manager</h3>
+              
+              <div class="form-group">
+                <label for="template-select">Select Campaign Template</label>
+                <select id="template-select" class="form-control">
+                  <!-- JS populated -->
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="template-subject">Email Subject Line</label>
+                <input type="text" id="template-subject" class="form-control" placeholder="Enter email subject...">
+              </div>
+              
+              <div class="form-group">
+                <label for="template-body">Email Body Copy</label>
+                <div class="tag-helper-container">
+                  <span>Available Tokens:</span>
+                  <button class="btn-token" data-token="{{business_name}}">{{business_name}}</button>
+                  <button class="btn-token" data-token="{{owner_name}}">{{owner_name}}</button>
+                  <button class="btn-token" data-token="{{location}}">{{location}}</button>
+                  <button class="btn-token" data-token="{{rating}}">{{rating}}</button>
+                  <button class="btn-token" data-token="{{niche}}">{{niche}}</button>
+                </div>
+                <textarea id="template-body" class="form-control text-area-large" placeholder="Write email body..."></textarea>
+              </div>
+              
+              <button class="btn btn-primary" id="save-template-btn">
+                <i class="fa-solid fa-floppy-disk"></i> Save Template Changes
+              </button>
+            </div>
+            
+            <!-- Right Column: Lead Selection & Live Preview -->
+            <div class="outreach-card glass">
+              <h3>Live Outreach Customizer</h3>
+              
+              <div class="form-group">
+                <label for="outreach-lead-select">Select Target Lead (from CRM)</label>
+                <select id="outreach-lead-select" class="form-control">
+                  <option value="">-- Select a Lead --</option>
+                  <!-- JS populated -->
+                </select>
+              </div>
+              
+              <div class="preview-box">
+                <div class="preview-header-line">
+                  <strong>To:</strong> <span id="outreach-email-to" class="text-mute">Select lead to see email</span>
+                </div>
+                <div class="preview-header-line">
+                  <strong>Subject:</strong> <span id="outreach-subject-preview" class="text-mute">Select lead to see subject</span>
+                </div>
+                <hr class="preview-divider">
+                <div class="preview-body-content" id="outreach-body-preview">
+                  Select a lead from the dropdown above to render personalized email content using CRM records.
+                </div>
+              </div>
+              
+              <div class="outreach-actions-row">
+                <button class="btn btn-outline" id="copy-email-btn" disabled>
+                  <i class="fa-solid fa-copy"></i> Copy Body Content
+                </button>
+                <a href="#" class="btn btn-primary" id="send-email-link" style="pointer-events: none; opacity: 0.6;">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Mail Client
+                </a>
+              </div>
+            </div>
+            
+          </div>
+        </section>
+        
+        <!-- ================= SETTINGS TAB ================= -->
+        <section id="tab-settings" class="app-tab-view">
+          <div class="view-header">
+            <h2>System Settings & Config</h2>
+            <p>Customize API settings, manage integrations, and backup your local database records.</p>
+          </div>
+          
+          <div class="settings-grid">
+            
+            <!-- API Configuration Card -->
+            <div class="settings-card glass">
+              <h3><i class="fa-solid fa-globe text-cyan"></i> Search API Provider</h3>
+              <p class="settings-desc">Choose between mock sandboxed search or live production APIs.</p>
+              
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input type="radio" name="api-mode" value="mock" checked>
+                  <span class="custom-radio"></span>
+                  <div class="radio-text">
+                    <strong>Mock Sandbox (Recommended for Testing)</strong>
+                    <span>Utilizes an offline, enriched seed database. Safe, fast, and needs no keys.</span>
+                  </div>
+                </label>
+                
+                <label class="radio-label">
+                  <input type="radio" name="api-mode" value="osm">
+                  <span class="custom-radio"></span>
+                  <div class="radio-text">
+                    <strong>OpenStreetMap / Nominatim (Free Live Search)</strong>
+                    <span>Queries live geographical nodes globally. Rate-limited but requires no keys.</span>
+                  </div>
+                </label>
+                
+                <label class="radio-label">
+                  <input type="radio" name="api-mode" value="serpapi">
+                  <span class="custom-radio"></span>
+                  <div class="radio-text">
+                    <strong>SerpApi - Google Maps API (Commercial Real Search)</strong>
+                    <span>Fetches real Google Maps business cards with phone, site, and ratings. Needs API key.</span>
+                  </div>
+                </label>
+              </div>
+              
+              <div class="form-group key-group" id="serpapi-key-container" style="display: none;">
+                <label for="serpapi-key-input">SerpApi Key</label>
+                <div class="input-password-wrapper">
+                  <input type="password" id="serpapi-key-input" class="form-control" placeholder="Enter SerpApi key (e.g. 5a1b3c...)">
+                  <button type="button" class="btn-toggle-pwd" id="toggle-key-visibility">
+                    <i class="fa-solid fa-eye"></i>
+                  </button>
+                </div>
+                
+                <div class="beginner-guide-box">
+                  <h5>🔑 How to get a free SerpApi key? (Beginner Friendly)</h5>
+                  <ol>
+                    <li>Go to <a href="https://serpapi.com/" target="_blank">SerpApi.com</a> and sign up for a free account.</li>
+                    <li>Verify your email to activate the account.</li>
+                    <li>Go to your Dashboard, find your private API Key, copy it, and paste it here!</li>
+                    <li>Free plans get **100 searches per month**, which is plenty for local exploration!</li>
+                  </ol>
+                </div>
+              </div>
+              
+              <button class="btn btn-primary" id="save-settings-btn">
+                <i class="fa-solid fa-check"></i> Save Configurations
+              </button>
+            </div>
+            
+            <!-- Utility Actions Card -->
+            <div class="settings-card glass">
+              <h3><i class="fa-solid fa-floppy-disk text-purple"></i> Data Management</h3>
+              <p class="settings-desc">Export lead lists or purge the local browser database.</p>
+              
+              <div class="settings-action-rows">
+                <div class="action-row-item">
+                  <div class="row-desc">
+                    <strong>Export Database</strong>
+                    <span>Download all current CRM pipeline leads into a CSV file.</span>
+                  </div>
+                  <button class="btn btn-outline" id="export-csv-btn">
+                    <i class="fa-solid fa-file-csv"></i> Export CSV
+                  </button>
+                </div>
+                
+                <div class="action-row-item">
+                  <div class="row-desc">
+                    <strong>Reset Database</strong>
+                    <span>Delete all local changes and reload initial seed mock leads.</span>
+                  </div>
+                  <button class="btn btn-danger" id="reset-db-btn">
+                    <i class="fa-solid fa-trash-arrow-up"></i> Reset CRM
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+        </section>
+        
+      </div>
+    </main>
+  </div>
+
+  <!-- ================= NATIVE DIALOGS ================= -->
+  
+  <!-- Lead Details Modal -->
+  <dialog id="lead-details-modal" class="glass-dialog">
+    <div class="dialog-header">
+      <h3 id="dlg-lead-name">Lead Details</h3>
+      <button class="btn-close-dialog" commandfor="lead-details-modal" command="close" onclick="document.getElementById('lead-details-modal').close()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    
+    <div class="dialog-body">
+      <div class="dialog-grid-split">
+        
+        <!-- Left Section: Metadata Details -->
+        <div class="dialog-section-left">
+          <div class="detail-group">
+            <span class="detail-label">Niche / Category</span>
+            <div id="dlg-lead-niche" class="detail-value text-capitalize">Dentist</div>
+          </div>
+          
+          <div class="detail-group">
+            <span class="detail-label">Address</span>
+            <div id="dlg-lead-address" class="detail-value">123 Main St, New York</div>
+          </div>
+          
+          <div class="detail-group">
+            <span class="detail-label">Phone</span>
+            <div id="dlg-lead-phone" class="detail-value">+1 212-555-0199</div>
+          </div>
+          
+          <div class="detail-group">
+            <span class="detail-label">Website</span>
+            <div id="dlg-lead-website" class="detail-value">
+              <a href="#" target="_blank" id="dlg-lead-website-link">www.example.com</a>
+            </div>
+          </div>
+          
+          <div class="detail-group-inline">
+            <div>
+              <span class="detail-label">Rating</span>
+              <div id="dlg-lead-rating" class="detail-value">4.5 <i class="fa-solid fa-star text-amber"></i></div>
+            </div>
+            <div>
+              <span class="detail-label">Value Estimate</span>
+              <div class="detail-value input-value-wrapper">
+                $<input type="number" id="dlg-lead-value-input" class="inline-val-input" min="0">
+              </div>
+            </div>
+          </div>
+          
+          <div class="detail-group">
+            <span class="detail-label">CRM Notes (Auto-saves)</span>
+            <textarea id="dlg-lead-notes" class="form-control text-area-med" placeholder="Add custom notes here..."></textarea>
+          </div>
+        </div>
+        
+        <!-- Right Section: Enriched Scrape Details -->
+        <div class="dialog-section-right">
+          <div class="card-header-flex">
+            <span class="detail-label font-bold"><i class="fa-solid fa-circle-nodes text-purple"></i> Web Crawler Enrichment</span>
+            <span class="enrichment-status-tag" id="dlg-enrichment-status">Not Scanned</span>
+          </div>
+          
+          <!-- Scanned State -->
+          <div id="dlg-enriched-data-panel" style="display: none;">
+            <div class="detail-group">
+              <span class="detail-label">Business Owner / Decision Maker</span>
+              <div id="dlg-lead-owner" class="detail-value text-bold">John Doe</div>
+            </div>
+            
+            <div class="detail-group">
+              <span class="detail-label">Scraped Email Addresses</span>
+              <ul class="scraped-email-list" id="dlg-lead-emails"></ul>
+            </div>
+            
+            <div class="detail-group">
+              <span class="detail-label">Social Media Footprints</span>
+              <div class="socials-container-flex" id="dlg-lead-socials"></div>
+            </div>
+            
+            <div class="detail-group">
+              <span class="detail-label">Detected Tech Stack</span>
+              <div class="tech-stack-flex" id="dlg-lead-tech"></div>
+            </div>
+          </div>
+          
+          <!-- Unscanned State -->
+          <div id="dlg-unscranned-panel" class="unscanned-prompt-box">
+            <i class="fa-solid fa-spider icon-large-pulse"></i>
+            <h4>Website Scan Required</h4>
+            <p>Trigger our crawler simulator to analyze this business's website metadata, discover emails, social accounts, and tech profiles.</p>
+            <button class="btn btn-purple" id="dlg-trigger-scan-btn">
+              <i class="fa-solid fa-magnifying-glass-chart"></i> Scan Website
+            </button>
+          </div>
+        </div>
+        
+      </div>
+    </div>
+    
+    <div class="dialog-footer">
+      <div class="dialog-checklist-container">
+        <div class="checklist-header">
+          <h4>Outreach Checklist</h4>
+          <span class="checklist-progress" id="dlg-checklist-progress-text">0/3 Tasks</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="dlg-checklist-progress-fill" style="width: 0%;"></div>
+        </div>
+        <ul class="dialog-checklist-list" id="dlg-checklist-list">
+          <!-- JS populated -->
+        </ul>
+      </div>
+    </div>
+  </dialog>
+  
+  <!-- Web Scanner Terminal Modal -->
+  <dialog id="enrichment-terminal-modal" class="terminal-dialog">
+    <div class="terminal-header">
+      <div class="terminal-buttons">
+        <span class="term-dot dot-red"></span>
+        <span class="term-dot dot-yellow"></span>
+        <span class="term-dot dot-green"></span>
+      </div>
+      <div class="terminal-title">LeadFlow Web Crawler Simulator v1.0.4</div>
+    </div>
+    <div class="terminal-body" id="terminal-body-console">
+      <!-- Output lines inserted here -->
+    </div>
+    <div class="terminal-footer">
+      <button class="btn btn-sm btn-outline" id="terminal-close-btn" disabled>
+        Awaiting Crawler Completion...
+      </button>
+    </div>
+  </dialog>
+
+  <!-- Main Application Orchestrator -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
