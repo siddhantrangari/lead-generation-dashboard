@@ -210,16 +210,16 @@ export const db = {
         serpapiKey: '',
         razorpayKeyId: 'rzp_test_SwqquWZp1VDDGx',
         razorpayKeySecret: '',
-        mockPayment: true
+        mockPayment: false
       }));
     } else {
-      // Migrate existing configuration if missing Razorpay keys
+      // Migrate existing configuration and turn off mock payments by default
       try {
         const existingConfig = JSON.parse(localStorage.getItem('lead_gen_api_config'));
-        if (existingConfig && existingConfig.razorpayKeyId === undefined) {
-          existingConfig.razorpayKeyId = 'rzp_test_SwqquWZp1VDDGx';
+        if (existingConfig) {
+          existingConfig.razorpayKeyId = existingConfig.razorpayKeyId || 'rzp_test_SwqquWZp1VDDGx';
           existingConfig.razorpayKeySecret = existingConfig.razorpayKeySecret || '';
-          existingConfig.mockPayment = existingConfig.mockPayment !== undefined ? existingConfig.mockPayment : true;
+          existingConfig.mockPayment = false; // Turn off mock payments to verify real checkout
           localStorage.setItem('lead_gen_api_config', JSON.stringify(existingConfig));
         }
       } catch (err) {
@@ -234,6 +234,22 @@ export const db = {
         paymentId: null,
         subscriptionId: null
       }));
+    } else {
+      // Clean up any mock subscriptions to allow testing the live gateway
+      try {
+        const sub = JSON.parse(localStorage.getItem('lead_gen_subscription'));
+        if (sub && sub.subscriptionId && sub.subscriptionId.startsWith('sub_mock_')) {
+          localStorage.setItem('lead_gen_subscription', JSON.stringify({
+            plan: 'free',
+            active: false,
+            expiresAt: null,
+            paymentId: null,
+            subscriptionId: null
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to clean up mock subscription:', err);
+      }
     }
   },
 
