@@ -1847,3 +1847,34 @@ select:focus {
 .border-left-discussion { border-left: 4px solid var(--amber) !important; }
 .border-left-converted { border-left: 4px solid var(--emerald) !important; }
 .border-left-lost { border-left: 4px solid var(--rose) !important; }
+
+/* ==========================================================================
+   Billing & Plans CSS
+   ========================================================================== */
+.pricing-card.glass:hover {
+  transform: translateY(-5px);
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.pricing-card.glass.popular:hover {
+  transform: translateY(-5px);
+  border-color: var(--primary) !important;
+  box-shadow: 0 15px 35px rgba(99, 102, 241, 0.25);
+  background: rgba(99, 102, 241, 0.06) !important;
+}
+
+.badge-active-plan {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: var(--emerald) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Make sure active plan pricing card displays visual status */
+.pricing-card.active-subscription {
+  border: 2px solid var(--emerald) !important;
+  background: rgba(16, 185, 129, 0.03) !important;
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.1) !important;
+}
+

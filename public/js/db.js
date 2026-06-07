@@ -207,7 +207,32 @@ export const db = {
     if (!localStorage.getItem('lead_gen_api_config')) {
       localStorage.setItem('lead_gen_api_config', JSON.stringify({
         mode: 'mock', // 'mock', 'osm', 'serpapi'
-        serpapiKey: ''
+        serpapiKey: '',
+        razorpayKeyId: 'rzp_test_SwqquWZp1VDDGx',
+        razorpayKeySecret: '',
+        mockPayment: true
+      }));
+    } else {
+      // Migrate existing configuration if missing Razorpay keys
+      try {
+        const existingConfig = JSON.parse(localStorage.getItem('lead_gen_api_config'));
+        if (existingConfig && existingConfig.razorpayKeyId === undefined) {
+          existingConfig.razorpayKeyId = 'rzp_test_SwqquWZp1VDDGx';
+          existingConfig.razorpayKeySecret = existingConfig.razorpayKeySecret || '';
+          existingConfig.mockPayment = existingConfig.mockPayment !== undefined ? existingConfig.mockPayment : true;
+          localStorage.setItem('lead_gen_api_config', JSON.stringify(existingConfig));
+        }
+      } catch (err) {
+        console.error('Migration of API config failed:', err);
+      }
+    }
+    if (!localStorage.getItem('lead_gen_subscription')) {
+      localStorage.setItem('lead_gen_subscription', JSON.stringify({
+        plan: 'free', // 'free', 'starter', 'pro', 'premium'
+        active: false,
+        expiresAt: null,
+        paymentId: null,
+        subscriptionId: null
       }));
     }
   },
@@ -340,12 +365,30 @@ export const db = {
   },
 
   /**
+   * Gets current subscription plan state
+   */
+  getSubscription() {
+    this.init();
+    return JSON.parse(localStorage.getItem('lead_gen_subscription'));
+  },
+
+  /**
+   * Saves subscription plan state
+   */
+  saveSubscription(subState) {
+    localStorage.setItem('lead_gen_subscription', JSON.stringify(subState));
+    return subState;
+  },
+
+  /**
    * Resets database to initial seed data
    */
   resetDatabase() {
     localStorage.removeItem('lead_gen_crm_db');
     localStorage.removeItem('lead_gen_templates');
     localStorage.removeItem('lead_gen_api_config');
+    localStorage.removeItem('lead_gen_subscription');
     this.init();
   }
 };
+

@@ -69,6 +69,9 @@
   
   <!-- ChartJS for Analytics -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Razorpay Checkout -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   
   <!-- Custom Styling -->
   <link rel="stylesheet" href="css/styles.css">
@@ -117,6 +120,12 @@
             <button class="nav-btn" data-tab="outreach">
               <i class="fa-solid fa-paper-plane"></i>
               <span>Outreach Hub</span>
+            </button>
+          </li>
+          <li>
+            <button class="nav-btn" data-tab="billing">
+              <i class="fa-solid fa-credit-card"></i>
+              <span>Billing & Plans</span>
             </button>
           </li>
           <li>
@@ -529,6 +538,52 @@
               </button>
             </div>
             
+            <!-- Razorpay Config Card -->
+            <div class="settings-card glass">
+              <h3><i class="fa-solid fa-credit-card text-purple"></i> Razorpay Subscription Gate</h3>
+              <p class="settings-desc">Configure your API keys to enable live subscription checkout payments.</p>
+              
+              <div class="form-group">
+                <label for="rzp-key-id-input">Razorpay Key ID</label>
+                <input type="text" id="rzp-key-id-input" class="form-control" placeholder="rzp_test_...">
+              </div>
+              
+              <div class="form-group">
+                <label for="rzp-key-secret-input">Razorpay Key Secret</label>
+                <div class="input-password-wrapper">
+                  <input type="password" id="rzp-key-secret-input" class="form-control" placeholder="Enter Key Secret">
+                  <button type="button" class="btn-toggle-pwd" id="toggle-rzp-secret-visibility">
+                    <i class="fa-solid fa-eye"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-top: 15px;">
+                <label class="checkbox-label" style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="rzp-mock-payment-checkbox" style="width: 18px; height: 18px; accent-color: var(--purple); margin-top: 3px;">
+                  <div class="checkbox-text">
+                    <strong>Enable Sandbox Mock Payment</strong>
+                    <span style="display: block; font-size: 11px; color: var(--text-muted); line-height: 1.4;">Simulate subscription success without hitting live Razorpay servers (ideal if secret key is missing).</span>
+                  </div>
+                </label>
+              </div>
+              
+              <div class="beginner-guide-box" style="margin-top: 15px;">
+                <h5>🔑 How to get your Razorpay Keys?</h5>
+                <ol>
+                  <li>Log in to your <a href="https://dashboard.razorpay.com/" target="_blank">Razorpay Dashboard</a>.</li>
+                  <li>Ensure you are in <strong>Test Mode</strong> (toggle in top header).</li>
+                  <li>Go to <strong>Account & Settings</strong> &rarr; <strong>API Keys</strong>.</li>
+                  <li>Click <strong>Generate Key</strong> to retrieve both <strong>Key ID</strong> and <strong>Key Secret</strong>.</li>
+                </ol>
+              </div>
+
+              <button class="btn btn-primary" id="save-rzp-settings-btn" style="margin-top: 15px;">
+                <i class="fa-solid fa-floppy-disk"></i> Save Razorpay Config
+              </button>
+            </div>
+
+            
             <!-- Utility Actions Card -->
             <div class="settings-card glass">
               <h3><i class="fa-solid fa-floppy-disk text-purple"></i> Data Management</h3>
@@ -557,6 +612,121 @@
               </div>
             </div>
             
+          </div>
+        </section>
+        
+        <!-- ================= BILLING & PLANS TAB ================= -->
+        <section id="tab-billing" class="app-tab-view">
+          <div class="view-header">
+            <h2>Billing Plans & Premium Upgrades</h2>
+            <p>Unlock premium features, unlimited lead searches, and advanced B2B intelligence engines.</p>
+          </div>
+          
+          <!-- Subscription Status Panel -->
+          <div class="billing-status-panel glass" style="margin-bottom: 30px; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; border: 1px solid rgba(255, 255, 255, 0.08);">
+            <div class="status-info">
+              <span class="status-label" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); font-weight: 600;">Current Plan Status</span>
+              <div class="status-row" style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                <h3 id="current-plan-display-name" style="font-size: 22px; font-weight: 700; margin: 0; color: #fff;">Free Trial Tier</h3>
+                <span id="current-plan-status-badge" class="badge" style="padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid rgba(255, 255, 255, 0.1);">Inactive</span>
+              </div>
+              <p id="current-plan-expiry-text" style="font-size: 13px; color: var(--text-muted); margin-top: 6px; margin-bottom: 0;">Your free plan has basic searching limits. Upgrade below to unlock full access.</p>
+            </div>
+            <div class="status-action" id="cancel-subscription-container" style="display: none;">
+              <button class="btn btn-outline btn-danger" id="cancel-subscription-btn" style="border-color: rgba(244, 63, 94, 0.4); color: var(--rose);">
+                <i class="fa-solid fa-ban"></i> Cancel Subscription
+              </button>
+            </div>
+          </div>
+
+          <!-- Pricing Grid -->
+          <div class="pricing-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 30px;">
+            
+            <!-- Plan 1: Starter -->
+            <div class="pricing-card glass" data-plan="starter" style="position: relative; display: flex; flex-direction: column; justify-content: space-between; padding: 30px 24px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(16px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
+              <div class="card-details">
+                <div class="plan-header" style="margin-bottom: 24px;">
+                  <span class="plan-badge" style="font-size: 10px; text-transform: uppercase; color: var(--cyan); background: rgba(6, 182, 212, 0.1); padding: 4px 10px; border-radius: 4px; font-weight: 700; letter-spacing: 1px;">Starter Pack</span>
+                  <h3 style="font-size: 22px; font-weight: 700; margin-top: 14px; margin-bottom: 8px; color: #fff;">Starter Plan</h3>
+                  <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0;">Perfect for local freelancers and small outreach campaigns.</p>
+                </div>
+                <div class="plan-price" style="margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 20px;">
+                  <div style="display: flex; align-items: baseline; gap: 4px;">
+                    <span style="font-size: 18px; font-weight: 500; color: var(--text-muted);">₹</span>
+                    <span style="font-size: 44px; font-weight: 800; color: #fff; line-height: 1; letter-spacing: -1px;">299</span>
+                    <span style="font-size: 13px; color: var(--text-muted);">/ month</span>
+                  </div>
+                </div>
+                <ul class="plan-features" style="list-style: none; padding: 0; margin: 0 0 30px 0; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 12px;">
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--cyan); margin-right: 10px; font-size: 14px;"></i> Up to <strong>200 Leads</strong> / month</li>
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--cyan); margin-right: 10px; font-size: 14px;"></i> Live OpenStreetMap searches</li>
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--cyan); margin-right: 10px; font-size: 14px;"></i> Basic Web Crawler simulator</li>
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--cyan); margin-right: 10px; font-size: 14px;"></i> Email Outreach templates</li>
+                  <li style="display: flex; align-items: center; opacity: 0.5;"><i class="fa-solid fa-circle-xmark" style="color: var(--rose); margin-right: 10px; font-size: 14px;"></i> No SerpApi integration</li>
+                </ul>
+              </div>
+              <button class="btn btn-outline btn-subscribe" data-plan="starter" style="width: 100%; font-weight: 600;">
+                Subscribe Starter
+              </button>
+            </div>
+
+            <!-- Plan 2: Pro -->
+            <div class="pricing-card glass popular" data-plan="pro" style="position: relative; display: flex; flex-direction: column; justify-content: space-between; padding: 30px 24px; border-radius: 16px; border: 1.5px solid var(--purple); background: rgba(99, 102, 241, 0.04); backdrop-filter: blur(16px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 30px rgba(99, 102, 241, 0.15);">
+              <div class="popular-ribbon" style="position: absolute; top: -12px; right: 24px; font-size: 10px; text-transform: uppercase; color: #fff; background: var(--purple); padding: 4px 12px; border-radius: 20px; font-weight: 700; letter-spacing: 1px; box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);">Most Popular</div>
+              <div class="card-details">
+                <div class="plan-header" style="margin-bottom: 24px;">
+                  <span class="plan-badge" style="font-size: 10px; text-transform: uppercase; color: var(--purple); background: rgba(99, 102, 241, 0.15); padding: 4px 10px; border-radius: 4px; font-weight: 700; letter-spacing: 1px;">Agency Choice</span>
+                  <h3 style="font-size: 22px; font-weight: 700; margin-top: 14px; margin-bottom: 8px; color: #fff;">Pro Plan</h3>
+                  <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0;">Ideal for growing marketing agencies and sales professionals.</p>
+                </div>
+                <div class="plan-price" style="margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 20px;">
+                  <div style="display: flex; align-items: baseline; gap: 4px;">
+                    <span style="font-size: 18px; font-weight: 500; color: var(--text-muted);">₹</span>
+                    <span style="font-size: 44px; font-weight: 800; color: #fff; line-height: 1; letter-spacing: -1px;">499</span>
+                    <span style="font-size: 13px; color: var(--text-muted);">/ month</span>
+                  </div>
+                </div>
+                <ul class="plan-features" style="list-style: none; padding: 0; margin: 0 0 30px 0; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 12px;">
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--purple); margin-right: 10px; font-size: 14px;"></i> Up to <strong>1000 Leads</strong> / month</li>
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--purple); margin-right: 10px; font-size: 14px;"></i> Live Google Maps via SerpApi</li>
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--purple); margin-right: 10px; font-size: 14px;"></i> Full Web Crawler simulator</li>
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--purple); margin-right: 10px; font-size: 14px;"></i> Unlimited Email Outreach templates</li>
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--purple); margin-right: 10px; font-size: 14px;"></i> Priority email and chat support</li>
+                </ul>
+              </div>
+              <button class="btn btn-primary btn-subscribe" data-plan="pro" style="width: 100%; font-weight: 600;">
+                Subscribe Pro
+              </button>
+            </div>
+
+            <!-- Plan 3: Premium -->
+            <div class="pricing-card glass" data-plan="premium" style="position: relative; display: flex; flex-direction: column; justify-content: space-between; padding: 30px 24px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(16px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
+              <div class="card-details">
+                <div class="plan-header" style="margin-bottom: 24px;">
+                  <span class="plan-badge" style="font-size: 10px; text-transform: uppercase; color: var(--amber); background: rgba(245, 158, 11, 0.1); padding: 4px 10px; border-radius: 4px; font-weight: 700; letter-spacing: 1px;">Enterprise Pack</span>
+                  <h3 style="font-size: 22px; font-weight: 700; margin-top: 14px; margin-bottom: 8px; color: #fff;">Premium Plan</h3>
+                  <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0;">Designed for enterprise-scale B2B growth and pipeline operations.</p>
+                </div>
+                <div class="plan-price" style="margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 20px;">
+                  <div style="display: flex; align-items: baseline; gap: 4px;">
+                    <span style="font-size: 18px; font-weight: 500; color: var(--text-muted);">₹</span>
+                    <span style="font-size: 44px; font-weight: 800; color: #fff; line-height: 1; letter-spacing: -1px;">999</span>
+                    <span style="font-size: 13px; color: var(--text-muted);">/ month</span>
+                  </div>
+                </div>
+                <ul class="plan-features" style="list-style: none; padding: 0; margin: 0 0 30px 0; font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 12px;">
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--amber); margin-right: 10px; font-size: 14px;"></i> <strong>Unlimited Leads</strong> & queries</li>
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--amber); margin-right: 10px; font-size: 14px;"></i> Live Google Maps via SerpApi</li>
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--amber); margin-right: 10px; font-size: 14px;"></i> Direct CRM integrations & webhooks</li>
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--amber); margin-right: 10px; font-size: 14px;"></i> Dedicated support Account Manager</li>
+                  <li style="display: flex; align-items: center;"><i class="fa-solid fa-circle-check" style="color: var(--amber); margin-right: 10px; font-size: 14px;"></i> 99.9% API proxy SLA</li>
+                </ul>
+              </div>
+              <button class="btn btn-outline btn-subscribe" data-plan="premium" style="width: 100%; font-weight: 600;">
+                Subscribe Premium
+              </button>
+            </div>
+
           </div>
         </section>
         

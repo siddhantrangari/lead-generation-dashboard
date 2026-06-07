@@ -51,6 +51,10 @@ export const appController = {
     
     // Check initial API mode badge
     this.updateApiModeBadge();
+
+    // 6. Billing panel setup
+    this.setupBillingTab();
+    this.updateBillingUI();
   },
 
   /**
@@ -93,6 +97,8 @@ export const appController = {
           this.kanban.renderBoard(this);
         } else if (targetTab === 'outreach') {
           this.outreach.updateLeadDropdown();
+        } else if (targetTab === 'billing') {
+          this.updateBillingUI();
         }
       });
     });
@@ -273,6 +279,13 @@ export const appController = {
     const serpKeyInput = document.getElementById('serpapi-key-input');
     const toggleKeyBtn = document.getElementById('toggle-key-visibility');
 
+    // Razorpay Settings DOM references
+    const rzpKeyIdInput = document.getElementById('rzp-key-id-input');
+    const rzpKeySecretInput = document.getElementById('rzp-key-secret-input');
+    const rzpMockCheckbox = document.getElementById('rzp-mock-payment-checkbox');
+    const saveRzpBtn = document.getElementById('save-rzp-settings-btn');
+    const toggleRzpSecretBtn = document.getElementById('toggle-rzp-secret-visibility');
+
     // Export & Reset buttons
     const exportBtn = document.getElementById('export-csv-btn');
     const resetBtn = document.getElementById('reset-db-btn');
@@ -302,6 +315,11 @@ export const appController = {
       serpKeyInput.value = config.serpapiKey;
     }
 
+    // Load Razorpay settings
+    if (rzpKeyIdInput) rzpKeyIdInput.value = config.razorpayKeyId || '';
+    if (rzpKeySecretInput) rzpKeySecretInput.value = config.razorpayKeySecret || '';
+    if (rzpMockCheckbox) rzpMockCheckbox.checked = !!config.mockPayment;
+
     // Toggle SerpApi Password Visibility
     toggleKeyBtn.addEventListener('click', () => {
       const icon = toggleKeyBtn.querySelector('i');
@@ -314,6 +332,20 @@ export const appController = {
       }
     });
 
+    // Toggle Razorpay Secret Visibility
+    if (toggleRzpSecretBtn && rzpKeySecretInput) {
+      toggleRzpSecretBtn.addEventListener('click', () => {
+        const icon = toggleRzpSecretBtn.querySelector('i');
+        if (rzpKeySecretInput.type === 'password') {
+          rzpKeySecretInput.type = 'text';
+          icon.className = 'fa-solid fa-eye-slash';
+        } else {
+          rzpKeySecretInput.type = 'password';
+          icon.className = 'fa-solid fa-eye';
+        }
+      });
+    }
+
     // Save configurations
     saveBtn.addEventListener('click', () => {
       const selectedMode = Array.from(apiRadios).find(r => r.checked).value;
@@ -324,7 +356,9 @@ export const appController = {
         return;
       }
 
+      const curConfig = db.getApiConfig();
       db.saveApiConfig({
+        ...curConfig,
         mode: selectedMode,
         serpapiKey: key
       });
@@ -333,6 +367,31 @@ export const appController = {
       this.addActivityLog(`API provider changed to: <strong>${selectedMode.toUpperCase()}</strong>.`);
       showToast('API configuration saved successfully!', 'success');
     });
+
+    // Save Razorpay Configurations
+    if (saveRzpBtn) {
+      saveRzpBtn.addEventListener('click', () => {
+        const curConfig = db.getApiConfig();
+        const keyId = rzpKeyIdInput.value.trim();
+        const keySecret = rzpKeySecretInput.value.trim();
+        const mock = rzpMockCheckbox.checked;
+
+        if (!mock && (!keyId || !keySecret)) {
+          showToast('Please enter both Razorpay Key ID and Secret, or check Sandbox Mock Mode.', 'warning');
+          return;
+        }
+
+        db.saveApiConfig({
+          ...curConfig,
+          razorpayKeyId: keyId,
+          razorpayKeySecret: keySecret,
+          mockPayment: mock
+        });
+
+        this.addActivityLog('Razorpay payment gateway credentials updated.');
+        showToast('Razorpay settings saved successfully!', 'success');
+      });
+    }
 
     // Export CRM Database to CSV
     exportBtn.addEventListener('click', () => {
@@ -356,9 +415,9 @@ export const appController = {
         // Reload API key fields
         const conf = db.getApiConfig();
         serpKeyInput.value = conf.serpapiKey;
-        apiRadios.forEach(radio => {
-          if (radio.value === conf.mode) radio.checked = true;
-        });
+        if (rzpKeyIdInput) rzpKeyIdInput.value = conf.razorpayKeyId || '';
+        if (rzpKeySecretInput) rzpKeySecretInput.value = conf.razorpayKeySecret || '';
+        if (rzpMockCheckbox) rzpMockCheckbox.checked = !!conf.mockPayment;
 
         this.updateApiModeBadge();
         this.addActivityLog("Database reset to factory seeds.");
@@ -761,6 +820,241 @@ export const appController = {
     
     this.addActivityLog(`Exported B2B lead list. (${leads.length} records).`);
     showToast('CSV Exported successfully!', 'success');
+  },
+
+  /**
+   * Sets up billing plan subscription triggers
+   */
+  setupBillingTab() {
+    const subscribeBtns = document.querySelectorAll('.btn-subscribe');
+    const cancelBtn = document.getElementById('cancel-subscription-btn');
+
+    subscribeBtns.forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const planName = btn.getAttribute('data-plan');
+        const config = db.getApiConfig();
+
+        // 1. If Sandbox Mock Mode is active
+        if (config.mockPayment) {
+          showToast(`[Sandbox Mode] Processing subscription for ${planName}...`, 'info');
+          
+          setTimeout(() => {
+            const mockSubState = {
+              plan: planName,
+              active: true,
+              expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days from now
+              paymentId: `pay_mock_${Math.random().toString(36).substring(2, 11)}`,
+              subscriptionId: `sub_mock_${Math.random().toString(36).substring(2, 11)}`
+            };
+            db.saveSubscription(mockSubState);
+            this.updateBillingUI();
+            this.addActivityLog(`Subscribed to <strong>${planName.toUpperCase()} Plan</strong> (Sandbox Mode).`);
+            showToast(`Successfully subscribed to ${planName.toUpperCase()} plan (Sandbox)!`, 'success');
+          }, 1500);
+          return;
+        }
+
+        // 2. Real Razorpay Checkout flow
+        if (!config.razorpayKeyId) {
+          showToast('Razorpay Key ID is not configured. Go to Settings.', 'warning');
+          return;
+        }
+
+        showToast('Initializing secure checkout...', 'info');
+
+        try {
+          // Send request headers for custom client config if present
+          const headers = { 'Content-Type': 'application/json' };
+          if (config.razorpayKeyId) headers['x-razorpay-key-id'] = config.razorpayKeyId;
+          if (config.razorpayKeySecret) headers['x-razorpay-key-secret'] = config.razorpayKeySecret;
+
+          const response = await fetch('/api/payment/create-subscription', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ planName })
+          });
+
+          if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error || 'Failed to create subscription session');
+          }
+
+          const checkoutData = await response.json();
+          const rzpSub = checkoutData.subscription;
+
+          // Razorpay Checkout Options
+          const options = {
+            key: checkoutData.key_id,
+            subscription_id: rzpSub.id,
+            name: 'LeadFlow CRM',
+            description: `${planName.toUpperCase()} plan monthly subscription`,
+            handler: async (paymentResponse) => {
+              showToast('Verifying payment signature...', 'info');
+              
+              try {
+                const verifyHeaders = { 'Content-Type': 'application/json' };
+                if (config.razorpayKeySecret) verifyHeaders['x-razorpay-key-secret'] = config.razorpayKeySecret;
+
+                const verifyRes = await fetch('/api/payment/verify-subscription', {
+                  method: 'POST',
+                  headers: verifyHeaders,
+                  body: JSON.stringify({
+                    subscription_id: paymentResponse.razorpay_subscription_id,
+                    payment_id: paymentResponse.razorpay_payment_id,
+                    signature: paymentResponse.razorpay_signature
+                  })
+                });
+
+                if (!verifyRes.ok) {
+                  const verifyErr = await verifyRes.json();
+                  throw new Error(verifyErr.error || 'Signature verification failed');
+                }
+
+                const verifyData = await verifyRes.json();
+                if (verifyData.success) {
+                  const activeSubState = {
+                    plan: planName,
+                    active: true,
+                    expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+                    paymentId: paymentResponse.razorpay_payment_id,
+                    subscriptionId: paymentResponse.razorpay_subscription_id
+                  };
+                  db.saveSubscription(activeSubState);
+                  this.updateBillingUI();
+                  this.addActivityLog(`Subscribed to <strong>${planName.toUpperCase()} Plan</strong>.`);
+                  showToast(`Thank you! Subscription to ${planName.toUpperCase()} plan is active.`, 'success');
+                } else {
+                  showToast('Signature mismatch. Secure validation failed.', 'error');
+                }
+              } catch (err) {
+                console.error('Signature verification error:', err);
+                showToast(`Payment Verification Failed: ${err.message}`, 'error');
+              }
+            },
+            prefill: {
+              name: 'Growth Agency User',
+              email: 'agency@leadflow.com',
+              contact: '9999999999'
+            },
+            notes: {
+              planName
+            },
+            theme: {
+              color: '#6366f1' // Theme match purple
+            }
+          };
+
+          const razorpayInstance = new window.Razorpay(options);
+          
+          razorpayInstance.on('payment.failed', function (resp) {
+            console.error('Razorpay payment failed:', resp.error);
+            showToast(`Payment Failed: ${resp.error.description}`, 'error');
+          });
+
+          razorpayInstance.open();
+
+        } catch (error) {
+          console.error('Checkout error:', error);
+          showToast(`Checkout Error: ${error.message}`, 'error');
+        }
+      });
+    });
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (confirm('Are you sure you want to cancel your subscription? You will lose access to premium tier limits.')) {
+          const resetSubState = {
+            plan: 'free',
+            active: false,
+            expiresAt: null,
+            paymentId: null,
+            subscriptionId: null
+          };
+          db.saveSubscription(resetSubState);
+          this.updateBillingUI();
+          this.addActivityLog('Subscription cancelled. Reverted to Free Tier.');
+          showToast('Subscription cancelled successfully.', 'info');
+        }
+      });
+    }
+  },
+
+  /**
+   * Renders subscription state details into Billing UI view
+   */
+  updateBillingUI() {
+    const sub = db.getSubscription();
+    
+    // Status selectors
+    const planNameEl = document.getElementById('current-plan-display-name');
+    const badgeEl = document.getElementById('current-plan-status-badge');
+    const expiryEl = document.getElementById('current-plan-expiry-text');
+    const cancelContainer = document.getElementById('cancel-subscription-container');
+    const pricingCards = document.querySelectorAll('.pricing-grid .pricing-card');
+
+    if (!planNameEl || !badgeEl || !expiryEl) return;
+
+    if (sub && sub.active && sub.plan !== 'free') {
+      const formattedPlan = sub.plan.charAt(0).toUpperCase() + sub.plan.slice(1) + ' Plan';
+      planNameEl.innerText = formattedPlan;
+      
+      badgeEl.innerText = 'Active';
+      badgeEl.className = 'badge badge-active-plan';
+      badgeEl.style.background = 'rgba(16, 185, 129, 0.15)';
+      badgeEl.style.color = 'var(--emerald)';
+      badgeEl.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+
+      const expDate = new Date(sub.expiresAt).toLocaleDateString();
+      expiryEl.innerHTML = `Your plan is active and will renew on <strong>${expDate}</strong>.<br>Subscription ID: <code style="font-family: monospace; font-size: 11px; color: var(--purple);">${sub.subscriptionId}</code>`;
+      
+      if (cancelContainer) cancelContainer.style.display = 'block';
+    } else {
+      planNameEl.innerText = 'Free Trial Tier';
+      
+      badgeEl.innerText = 'Inactive';
+      badgeEl.className = 'badge';
+      badgeEl.style.background = 'rgba(255, 255, 255, 0.05)';
+      badgeEl.style.color = 'var(--text-muted)';
+      badgeEl.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+
+      expiryEl.innerText = 'Your free trial has basic search limits and mock datasets. Upgrade below to run live Google Maps queries.';
+      
+      if (cancelContainer) cancelContainer.style.display = 'none';
+    }
+
+    // Refresh Pricing Cards visual active states
+    pricingCards.forEach(card => {
+      const cardPlan = card.getAttribute('data-plan');
+      const subscribeBtn = card.querySelector('.btn-subscribe');
+
+      if (sub && sub.active && sub.plan === cardPlan) {
+        card.classList.add('active-subscription');
+        if (subscribeBtn) {
+          subscribeBtn.innerText = 'Current Active Plan';
+          subscribeBtn.disabled = true;
+          subscribeBtn.className = 'btn btn-outline';
+          subscribeBtn.style.color = 'var(--emerald)';
+          subscribeBtn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        }
+      } else {
+        card.classList.remove('active-subscription');
+        if (subscribeBtn) {
+          subscribeBtn.disabled = false;
+          subscribeBtn.innerText = `Subscribe ${cardPlan.charAt(0).toUpperCase() + cardPlan.slice(1)}`;
+          if (cardPlan === 'pro') {
+            subscribeBtn.className = 'btn btn-primary btn-subscribe';
+            subscribeBtn.style.color = '';
+            subscribeBtn.style.borderColor = '';
+          } else {
+            subscribeBtn.className = 'btn btn-outline btn-subscribe';
+            subscribeBtn.style.color = '';
+            subscribeBtn.style.borderColor = '';
+          }
+        }
+      }
+    });
   }
 };
 
