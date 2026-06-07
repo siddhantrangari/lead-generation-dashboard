@@ -209,8 +209,8 @@ app.post('/api/payment/verify-subscription', async (req, res) => {
       return res.status(400).json({ error: 'Razorpay Key Secret is missing. Verification halted.' });
     }
 
-    // Compute expected signature: subscription_id + '|' + payment_id
-    const body = subscription_id + '|' + payment_id;
+    // Compute expected signature: payment_id + '|' + subscription_id
+    const body = payment_id + '|' + subscription_id;
     const expectedSignature = crypto
       .createHmac('sha256', keySecret)
       .update(body)
